@@ -1,0 +1,32 @@
+from pathlib import Path
+
+import pytest
+
+TEMP_DIR: Path = Path(".temp")
+TEMP_DIR.mkdir(exist_ok=True)
+
+from siguelo_service.service import Siguelo
+
+
+@pytest.mark.parametrize(
+    "search_params",
+    [
+        {
+            "tipo": "titulo" or "publicidad",
+            "oficina_registral": "LIMA",
+            "anio_titulo": "2026",
+            "numero_titulo": "123456",
+            "codigo_tive": "",
+        },
+
+    ],
+)
+def test_siguelo(browser_context_instance, search_params) -> None:
+    siguelo_service: Siguelo = Siguelo(browser_context_instance)
+
+    donwload_dir: Path = (
+        TEMP_DIR / search_params["anio_titulo"] / search_params["numero_titulo"]
+    )
+    donwload_dir.mkdir(parents=True, exist_ok=True)
+
+    siguelo_service.find(**search_params, download_dir=donwload_dir)
