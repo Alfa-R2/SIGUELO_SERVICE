@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
@@ -8,7 +8,14 @@ class PagoDetalleSeguimiento:
     lugar: str
     recibo: str
     fecha_hora_recibo: str
-    monto: str
+    _monto: str
+
+    @property
+    def monto(self) -> str:
+        if self._monto.startswith("."):
+            return f"0{self._monto}"
+
+        return self._monto
 
 
 @dataclass
