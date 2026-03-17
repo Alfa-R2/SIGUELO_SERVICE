@@ -5,6 +5,7 @@ ERROR_SELECTORS: tuple[str, ...] = (
     'p:has-text("No se encontró coincidencia")',
     'td:has-text("Ha ocurrido un error al intentar obtener")',
     'td:has-text("No sé encontró información solicitada")',
+    'p:text(" El registro se encontro en el CM , pero la imagen no existe o esta mal quemada ")',
 )
 
 
