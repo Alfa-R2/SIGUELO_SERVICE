@@ -6,6 +6,7 @@ ERROR_SELECTORS: tuple[str, ...] = (
     'td:has-text("Ha ocurrido un error al intentar obtener")',
     'td:has-text("No sé encontró información solicitada")',
     'p:text(" El registro se encontro en el CM , pero la imagen no existe o esta mal quemada ")',
+    'p:text("Recuerde que la descarga de su Orden de Giro solo es por unica vez, mediante la plataforma Siguelo")',
 )
 
 

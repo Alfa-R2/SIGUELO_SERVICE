@@ -164,8 +164,7 @@ class GetAsientosTives:
                 raise
             download_info.value.save_as(download_path)
 
-        except TimeoutError as e:
-            logger.exception("Download Tive From Row Exception.")
+        except TimeoutError:
             download_result.error = True
             download_result.error_message = GetDownloadError.execute(page=command.page)
 
