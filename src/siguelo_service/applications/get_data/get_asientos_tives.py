@@ -79,7 +79,7 @@ class GetAsientosTives:
                 )
                 if restricted.is_visible():
                     raise TimeoutError("Restricted download") from e
-                raise
+                raise e
 
             new_page = event_info.value
 
@@ -91,9 +91,11 @@ class GetAsientosTives:
             new_page.close()
 
         except TimeoutError as e:
-            logger.exception("Download Asiento From Row Exception.")
             download_result.error = True
             download_result.error_message = GetDownloadError.execute(page=command.page)
+            logger.error(
+                f"Download TIVE From Row Exception: {download_result.error_message}"
+            )
 
         return download_result
 
@@ -161,12 +163,15 @@ class GetAsientosTives:
                     siguiente_button.click()
 
             except TimeoutError as e:
-                raise
+                raise e
             download_info.value.save_as(download_path)
 
         except TimeoutError:
             download_result.error = True
             download_result.error_message = GetDownloadError.execute(page=command.page)
+            logger.error(
+                f"Download TIVE From Row Exception: {download_result.error_message}"
+            )
 
         return download_result
 

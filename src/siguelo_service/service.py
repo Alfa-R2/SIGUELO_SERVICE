@@ -1,4 +1,4 @@
-from datetime import datetime
+from calendar import c
 from pathlib import Path
 from typing import Generator, Literal
 
@@ -9,6 +9,9 @@ from retry import retry
 from siguelo_service.applications.get_info.from_row_publicidad import (
     GetInfoFromRowPublicidad,
 )
+from siguelo_service.applications.get_monto_devolucion import GetMontoDevolucion
+from siguelo_service.applications.search_titulo import SearchTitulo
+from siguelo_service.applications.take_screenshot import TakeScreenshot
 
 from .applications.get_data.get_anotacion import GetAnotacion, GetAnotacionCommand
 from .applications.get_data.get_asientos_tives import (
@@ -17,16 +20,14 @@ from .applications.get_data.get_asientos_tives import (
 )
 from .applications.get_data.get_numeros_partida import GetNumerosPartida
 from .applications.get_info.from_row import GetInfoCommand, GetInfoFromRow
-from .entities.exceptions import (
-    AnoyingAdException,
-    TooManyRequestsError,
-    UnknownRegistryOfficeException,
+from .entities.exceptions import TooManyRequestsError
+from .entities.siguelo_entities import (
+    DetalleSeguimientoRecord,
+    SigueloSearchResult,
+    TitleStateResult,
 )
-from .entities.siguelo_entities import DetalleSeguimientoRecord, SigueloSearchResult
 from .helpers import wait_until_request_rate_is_renewed
 from .models.dataclasses import CurrentSearch, ResourceDownloadResult
-from .models.title import Title
-from .turnstile import wait_for_success
 
 
 class Siguelo:
@@ -39,17 +40,12 @@ class Siguelo:
 
     LISTAR_ESQUELA_URL = "https://esquela-sunarp-production.apps.paas.sunarp.gob.pe/esquela/oficina/api/listarEsquela"
 
-    def __init__(
-        self, browser_context: BrowserContext, ss_dir: Path | None = None
-    ) -> None:
-        self.ss_dir = ss_dir
-        self.current_search = CurrentSearch("titulo", "", "", "")
+    def __init__(self, browser_context: BrowserContext) -> None:
         self.browser_context = browser_context
         self.page = self.browser_context.new_page()
-        return None
 
     def __repr__(self):
-        return f"Siguelo(browser_context={self.browser_context}, ss_dir={self.ss_dir})"
+        return f"Siguelo(browser_context={self.browser_context}, screenshot_dir={self.screenshot_dir})"
 
     @property
     def _terminos_condiciones_is_accepted(self) -> bool:
@@ -59,9 +55,6 @@ class Siguelo:
     def _terminos_condiciones(self) -> str | None:
         return self.page.evaluate('() => sessionStorage.getItem("termCondi");')
 
-    #####################################################
-    # DATOS TITULO                                      #
-    #####################################################
     def _go_to_datos_titulo(self) -> None:
         datos_titulo_link = self.page.query_selector(
             'a[href="/siguelo/titulo"], a[href="/siguelo/publicidad"]'
@@ -72,237 +65,10 @@ class Siguelo:
             'span:text("Datos del título consultado"), h1:text("SEGUIMIENTO DE PUBLICIDAD")'
         )
 
-    def _clear_ads(self) -> None:
-        page = self.page
-
-        page.wait_for_timeout(1_000)
-
-        ad_img_selector = "img[alt='Publicidad']"
-        ad_img = page.locator(ad_img_selector)
-        if ad_img.is_visible():
-            close_button = dict(x=1, y=1)
-            page.mouse.click(close_button["x"], close_button["y"])
-
-        page.wait_for_timeout(1_000)
-
-        if ad_img.is_visible():
-            raise AnoyingAdException(ad_img_selector)
-
-        return None
-
-    def _check_terms_and_conditions(self) -> None:
-        accept_terms_and_conditions_button = self.page.locator(
-            "button:text-is('Acepto')"
-        )
-        if accept_terms_and_conditions_button.is_visible():
-            accept_terms_and_conditions_button.click()
-
-    # @retry(exceptions=TimeoutError, tries=3)  # NOTE: Retries here may be expensive because of 2captcha dependency
-    @retry(exceptions=TimeoutError, tries=1)
+    @retry(exceptions=TimeoutError, tries=3)
     def _go_to_home(self) -> None:
-        page = self.page
-        page.goto(self.HOME_URL)
-        return None
+        self.page.goto(self.HOME_URL)
 
-    def find(
-        self,
-        tipo: Literal["titulo", "publicidad"],
-        oficina_registral: str,
-        anio_titulo: str,
-        numero_titulo: str,
-        download_dir: Path,
-        codigo_tive: str | None = None,
-    ) -> SigueloSearchResult | None:
-        asientos_tives: tuple[ResourceDownloadResult, ...] = tuple()
-        anotacion: ResourceDownloadResult | None = None
-
-        title: Title = Title(
-            registry_office=oficina_registral,
-            year=int(anio_titulo),
-            number=int(numero_titulo),
-        )
-
-        context = self.page.context
-        self.page.close()
-        self.page = context.new_page()
-
-        # Just for turnstile
-        # self.page.add_init_script(_OPEN_CLOSED_SHADOWS_SCRIPT)
-
-        try:
-            csa = (tipo, oficina_registral, anio_titulo, numero_titulo, codigo_tive)
-            current_search = CurrentSearch(*csa)
-            self.current_search = current_search
-            self._go_to_home()
-        except Exception as e:
-            logger.exception(f"Error find - Siguelo.")
-
-        try:
-            self._clear_ads()
-        except AnoyingAdException as e:
-            raise e
-        except Exception as e:
-            logger.exception(f"Error find - Siguelo.")
-
-        try:
-            self._check_terms_and_conditions()
-        except Exception as e:
-            logger.exception(f"Error find - Siguelo.")
-
-        try:
-            self._fill_form(tipo, title)
-        except UnknownRegistryOfficeException as e:
-            raise
-
-        iframe = self.page.frame_locator('iframe[id^="cf-chl-widget-"]')
-        success_circle = iframe.locator("circle.success-circle")
-        try:
-            success_circle.wait_for()
-        except TimeoutError:
-            logger.info(f"Captcha not solved.")
-            iframe.locator("html").click()
-            success_circle.wait_for()
-            logger.info(f"Captcha clicked.")
-
-        try:
-            self._send_form()
-            page = self.page
-            try:
-                wait_for_success(page)
-            except TooManyRequestsError as e:
-                logger.warning("Rate limit reach waiting util tomorrow.")
-                wait_until_request_rate_is_renewed()
-
-                return self.find(
-                    tipo,
-                    oficina_registral,
-                    anio_titulo,
-                    numero_titulo,
-                    download_dir,
-                    codigo_tive,
-                )
-
-            monto_devolver_element = page.query_selector(".mostrarDevoMoney")
-            assert monto_devolver_element
-
-            monto_devolver_text = monto_devolver_element.text_content() or "S/0.00"
-            monto_devolver_text = monto_devolver_text.replace("\xa0", "")
-            monto_devolver_text = monto_devolver_text.strip().replace("S/", "")
-
-            monto_devolucion = "0.00"
-            if monto_devolver_text != "0.00":
-                monto_devolucion = monto_devolver_text
-
-            numeros_de_partida = list(GetNumerosPartida.execute(page))
-
-            if page.locator(
-                "a", has_text="Acceder al asiento de inscripción y TIVE"
-            ).is_visible():
-                asientos_tives = GetAsientosTives.execute(
-                    GetAsientosTivesCommand(
-                        browser_context=self.browser_context,
-                        page=page,
-                        current_search=self.current_search,
-                        download_dir=download_dir,
-                    )
-                )
-
-            if page.locator('a:has-text("Ver anotación")').is_visible():
-                anotacion = GetAnotacion.execute(
-                    GetAnotacionCommand(
-                        browser_context=self.browser_context,
-                        page=page,
-                        download_dir=download_dir,
-                    )
-                )
-
-            detalle_seguimiento: tuple[DetalleSeguimientoRecord, ...] = (
-                self._get_detalle_seguimiento(
-                    download_dir, codigo_tive if codigo_tive else ""
-                )
-            )
-
-            result = SigueloSearchResult(
-                monto_devolucion,
-                asientos_tives,
-                anotacion,
-                detalle_seguimiento,
-                numeros_de_partida,
-            )
-
-            if self.ss_dir:
-                now = datetime.now()
-                str_now = now.strftime("%d_%m_%Y__%H-%M-%S")
-                cs_title = self.current_search.numero_titulo
-                cs_title_year = self.current_search.anio_titulo
-                ss_path = self.ss_dir / f"{cs_title}_{cs_title_year}__{str_now}.jpeg"
-                try:
-                    page.wait_for_timeout(250)
-                    page.screenshot(type="jpeg", path=ss_path)
-                except Exception as e:
-                    logger.exception(f"ERROR!!!")
-
-            return result
-
-        except Exception as e:
-            return logger.exception(f"Error find - Siguelo.")
-
-    def _fill_form(self, tipo: Literal["titulo", "publicidad"], title: Title) -> None:
-        page: Page = self.page
-
-        # Tipo tramite
-        tracking_types = dict(titulo=0, publicidad=1)
-        tracking_type = tracking_types[tipo]
-        tracking_type_radio = page.locator(
-            f"input[type='radio'][name='optradio'][value='{tracking_type}']"
-        )
-        try:
-            if not tracking_type_radio.is_checked():
-                tracking_type_radio.check()
-        except Exception as e:
-            raise e
-
-        if tipo == "publicidad":
-            accept_buttton = page.locator('button:text("OK")')
-            accept_buttton.click()
-
-        registry_office_select = page.locator("#cboOficina")
-        ros_option = registry_office_select.locator("option")
-        ros_options = tuple(t.strip().upper() for t in ros_option.all_inner_texts())
-
-        fixed_registry_office = (
-            title.registry_office.strip()
-            .upper()
-            .replace("Á", "A")
-            .replace("É", "E")
-            .replace("Í", "I")
-            .replace("Ó", "O")
-            .replace("Ú", "U")
-        )
-
-        if fixed_registry_office not in ros_options:
-            raise UnknownRegistryOfficeException(title.registry_office)
-        try:
-            registry_office_select.select_option(label=fixed_registry_office)
-        except TimeoutError as e:
-            raise
-
-        title_year_input = page.locator("#cboAnio")
-        title_year_input.select_option(value=str(title.year))
-
-        title_number_input = page.locator('input[name="numeroTitulo"]')
-        title_number_input.fill(str(title.number))
-
-        return None
-
-    def _send_form(self) -> None:
-        page = self.page
-        submit_button = page.locator("button:has-text('BUSCAR'):enabled")
-        return submit_button.click()
-
-    #####################################################
-    # DETALLE SEGUIMIENTO                               #
-    #####################################################
     def _go_to_detalle_seguimiento(self) -> None:
         page: Page = self.page
 
@@ -350,7 +116,7 @@ class Siguelo:
             yield page_number
 
     def _get_detalle_seguimiento(
-        self, download_dir: Path, codigo_tive: str
+        self, download_dir: Path, codigo_tive: str, current_search: CurrentSearch
     ) -> tuple[DetalleSeguimientoRecord, ...]:
         page = self.page
         self._go_to_detalle_seguimiento()
@@ -369,7 +135,7 @@ class Siguelo:
 
                 result: DetalleSeguimientoRecord = (
                     GetInfoFromRowPublicidad.execute(command)
-                    if self.current_search.tipo == "publicidad"
+                    if current_search.tipo == "publicidad"
                     else GetInfoFromRow.execute(command)
                 )
 
@@ -377,3 +143,136 @@ class Siguelo:
 
         self._go_to_datos_titulo()
         return tuple(detalle_records)
+
+    def __search_titulo(self, current_search: CurrentSearch) -> None:
+        """
+        Raises:
+            - AnoyingAdException: If an unexpected advertisement appears during the search process, which may interfere with the normal flow of the application.
+            - UnknownRegistryOfficeException: If the specified registry office is not recognized or cannot be found during the search process.
+        """
+        if not self.page.is_closed():
+            self.page.close()
+
+        self.page = self.browser_context.new_page()
+
+        try:
+            self._go_to_home()
+            SearchTitulo.execute(self.page, current_search)
+        except TooManyRequestsError:
+            logger.warning("Rate limit reach waiting util tomorrow.")
+            wait_until_request_rate_is_renewed()
+            return self.__search_titulo(current_search)
+
+    def find(
+        self,
+        tipo: Literal["titulo", "publicidad"],
+        oficina_registral: str,
+        anio_titulo: str,
+        numero_titulo: str,
+        download_dir: Path,
+        screenshot_dir: Path | None = None,
+        codigo_tive: str | None = None,
+    ) -> SigueloSearchResult | None:
+        result: SigueloSearchResult | None = None
+        asientos_tives: tuple[ResourceDownloadResult, ...] = tuple()
+        anotacion: ResourceDownloadResult | None = None
+        detalle_seguimiento: tuple[DetalleSeguimientoRecord, ...] = tuple()
+
+        current_search = CurrentSearch(
+            tipo=tipo,
+            oficina_registral=oficina_registral,
+            anio_titulo=anio_titulo,
+            numero_titulo=numero_titulo,
+            codigo_tive=codigo_tive,
+        )
+
+        self.__search_titulo(current_search)
+
+        try:
+            monto_devolucion: str = GetMontoDevolucion.execute(self.page)
+            numeros_de_partida: list[str] = list(GetNumerosPartida.execute(self.page))
+
+            if self.page.locator(
+                "a", has_text="Acceder al asiento de inscripción y TIVE"
+            ).is_visible():
+                asientos_tives = GetAsientosTives.execute(
+                    GetAsientosTivesCommand(
+                        browser_context=self.browser_context,
+                        page=self.page,
+                        current_search=current_search,
+                        download_dir=download_dir,
+                    )
+                )
+
+            if self.page.locator('a:has-text("Ver anotación")').is_visible():
+                anotacion = GetAnotacion.execute(
+                    GetAnotacionCommand(
+                        browser_context=self.browser_context,
+                        page=self.page,
+                        download_dir=download_dir,
+                    )
+                )
+
+            detalle_seguimiento = self._get_detalle_seguimiento(
+                download_dir, codigo_tive if codigo_tive else "", current_search
+            )
+
+            result = SigueloSearchResult(
+                monto_devolucion,
+                asientos_tives,
+                anotacion,
+                detalle_seguimiento,
+                numeros_de_partida,
+            )
+
+            if screenshot_dir:
+                TakeScreenshot.execute(
+                    page=self.page,
+                    current_search=current_search,
+                    screenshot_dir=screenshot_dir,
+                )
+
+        except Exception:
+            logger.exception(f"Error find - Siguelo.")
+
+        return result
+
+    def get_title_state(
+        self,
+        tipo: Literal["titulo", "publicidad"],
+        oficina_registral: str,
+        anio_titulo: str,
+        numero_titulo: str,
+        screenshot_dir: Path | None = None,
+    ) -> TitleStateResult:
+
+        current_search = CurrentSearch(
+            tipo=tipo,
+            oficina_registral=oficina_registral,
+            anio_titulo=anio_titulo,
+            numero_titulo=numero_titulo,
+            codigo_tive=None,
+        )
+        self.__search_titulo(current_search)
+
+        try:
+            estado_titulo_element = self.page.locator("#estadoActual")
+            estado_titulo_element.wait_for(state="visible", timeout=5000)
+            estado_registral = estado_titulo_element.input_value().strip()
+            screenshot_path: Path | None = (
+                TakeScreenshot.execute(
+                    page=self.page,
+                    current_search=current_search,
+                    screenshot_dir=screenshot_dir,
+                )
+                if screenshot_dir
+                else None
+            )
+
+            return TitleStateResult(
+                estado_registral=estado_registral, screenshot_path=screenshot_path
+            )
+
+        except Exception:
+            logger.exception(f"Error get_title_state - Siguelo.")
+            return TitleStateResult(estado_registral=None, screenshot_path=None)

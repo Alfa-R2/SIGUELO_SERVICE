@@ -1,3 +1,6 @@
+from pathlib import Path
+from typing import NamedTuple
+
 from siguelo_service.models.dataclasses import (
     PagoDetalleSeguimiento,
     ResourceDownloadResult,
@@ -83,3 +86,8 @@ class SigueloSearchResult:
             f"anotacion={self.anotacion}, detalle_seguimiento={self.detalle_seguimiento}, "
             f"partidas={self.partidas})"
         )
+
+
+class TitleStateResult(NamedTuple):
+    estado_registral: str | None
+    screenshot_path: Path | None

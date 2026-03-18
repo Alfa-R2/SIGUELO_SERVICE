@@ -18,7 +18,6 @@ from siguelo_service.service import Siguelo
             "numero_titulo": "123456",
             "codigo_tive": "",
         },
-
     ],
 )
 def test_siguelo(browser_context_instance, search_params) -> None:
@@ -27,6 +26,42 @@ def test_siguelo(browser_context_instance, search_params) -> None:
     donwload_dir: Path = (
         TEMP_DIR / search_params["anio_titulo"] / search_params["numero_titulo"]
     )
+    screenshot_dir: Path = donwload_dir / "screenshots"
+
+    screenshot_dir.mkdir(parents=True, exist_ok=True)
     donwload_dir.mkdir(parents=True, exist_ok=True)
 
-    siguelo_service.find(**search_params, download_dir=donwload_dir)
+    siguelo_service.find(
+        **search_params, download_dir=donwload_dir, screenshot_dir=screenshot_dir
+    )
+
+
+@pytest.mark.parametrize(
+    "search_params",
+    [
+        {
+            "tipo": "titulo" or "publicidad",
+            "oficina_registral": "LIMA",
+            "anio_titulo": "2026",
+            "numero_titulo": "123456",
+        },
+    ],
+)
+def test_get_title_state(browser_context_instance, search_params) -> None:
+    siguelo_service: Siguelo = Siguelo(browser_context_instance)
+    screenshot_dir: Path = (
+        TEMP_DIR
+        / search_params["anio_titulo"]
+        / search_params["numero_titulo"]
+        / "screenshots"
+    )
+
+    screenshot_dir.mkdir(parents=True, exist_ok=True)
+
+    result = siguelo_service.get_title_state(
+        **search_params, screenshot_dir=screenshot_dir
+    )
+
+    assert result
+    assert result.estado_registral
+    assert result.screenshot_path

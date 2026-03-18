@@ -18,3 +18,21 @@ async () => {
     downloadFile(blob, 'file.pdf')
 }
 """
+INSERT_DIV_TO_SCREENSHOT_SCRIPT: str = """
+() => {
+    let rowsTable = document.getElementsByClassName('row');
+    let rowsArray = Array.from(rowsTable);
+    let rowsToUse = []
+    for (let i = 3; i <= 10; i++) {
+        rowsToUse.push(rowsArray[i])
+    };
+    let div = document.createElement('div');
+    div.id = 'div-screenshot';
+    let parent = rowsArray[3].parentNode;
+    parent.insertBefore(div, rowsArray[3]);
+    rowsToUse.forEach(row => {
+        div.appendChild(row)
+    });
+    return div
+}
+"""

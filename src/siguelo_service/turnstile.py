@@ -5,6 +5,14 @@ from .entities.exceptions import TooManyRequestsError
 
 
 def wait_for_success(page: Page) -> None:
+    """
+    Raises:
+        - TooManyRequestsError: If the server responds with a 429 status code, indicating that the rate limit has been exceeded and the client should wait before making further requests.
+        - ValueError: If the server responds with specific error codes (998 or 2) indicating issues such as an invalid captcha, invalid title number, or no results found.
+        - NotImplementedError: If the server responds with a 500 status code, indicating an internal server error that is not currently managed by the application.
+        - RuntimeError: If an unknown error code is received from the server, providing details about the error code and the corresponding message for debugging purposes.
+    """
+
     timer_input_selector = "#txtReloj"
     alert_div_selector = "#swal2-content"
     error_code_td_selector = f"{alert_div_selector} tfoot td"
