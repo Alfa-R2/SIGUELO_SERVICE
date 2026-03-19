@@ -160,7 +160,17 @@ class GetAsientosTives:
 
             try:
                 with command.page.expect_download() as download_info:
+                    modal_text: Locator = command.page.locator(
+                        'p:text("Recuerde que la descarga de su Orden de Giro solo es por unica vez, mediante la plataforma Siguelo")'
+                    )
+                    modal_button: Locator = command.page.locator(
+                        "button[type='button']", has_text="SI"
+                    )
+
                     siguiente_button.click()
+
+                    if modal_text.is_visible() and modal_button.is_visible():
+                        modal_button.click()
 
             except TimeoutError as e:
                 raise e
