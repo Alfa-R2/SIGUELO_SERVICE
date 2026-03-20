@@ -32,4 +32,5 @@ class TooManyRequestsError(Exception):
 class MainException(Exception): ...
 
 
-class AddedRetry(MainException): ...
+class FreezeSearchException(MainException):
+    """Raised when the search process is frozen, which may occur due to various reasons such as server issues, network problems, or unexpected errors during the search operation. This exception indicates that the search process cannot proceed further and may require intervention or troubleshooting to resolve the underlying issue."""

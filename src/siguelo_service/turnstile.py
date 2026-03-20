@@ -1,7 +1,8 @@
 from loguru import logger
 from patchright.sync_api import Page
+from patchright.sync_api import TimeoutError as PachrightTimeoutError
 
-from .entities.exceptions import TooManyRequestsError
+from .entities.exceptions import FreezeSearchException, TooManyRequestsError
 
 
 def wait_for_success(page: Page) -> None:
@@ -11,6 +12,7 @@ def wait_for_success(page: Page) -> None:
         - ValueError: If the server responds with specific error codes (998 or 2) indicating issues such as an invalid captcha, invalid title number, or no results found.
         - NotImplementedError: If the server responds with a 500 status code, indicating an internal server error that is not currently managed by the application.
         - RuntimeError: If an unknown error code is received from the server, providing details about the error code and the corresponding message for debugging purposes.
+        - FreezeSearchException: If a timeout occurs while waiting for the first loading element, indicating that the search process is frozen and cannot proceed further.
     """
 
     timer_input_selector = "#txtReloj"
@@ -19,7 +21,13 @@ def wait_for_success(page: Page) -> None:
     loading_element_selectors = (error_code_td_selector, timer_input_selector)
     first_loading_element_selector = ", ".join(loading_element_selectors)
     first_loading_element = page.locator(first_loading_element_selector)
-    first_loading_element.wait_for()
+    try:
+        first_loading_element.wait_for()
+    except PachrightTimeoutError:
+        logger.info("Timeout occurred while waiting for the first loading element.")
+        raise FreezeSearchException(
+            "The search process is frozen due to a timeout while waiting for the first loading element."
+        )
 
     timer_element = page.locator(timer_input_selector)
     if timer_element.is_visible():

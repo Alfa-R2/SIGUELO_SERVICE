@@ -1,5 +1,6 @@
 from loguru import logger
 from patchright.sync_api import Page
+from patchright.sync_api import TimeoutError as PachrightTimeoutError
 
 from siguelo_service.entities.exceptions import (
     AnoyingAdException,
@@ -89,6 +90,7 @@ class SearchTitulo:
             - ValueError: If the server responds with specific error codes (998 or 2) indicating issues such as an invalid captcha, invalid title number, or no results found.
             - NotImplementedError: If the server responds with a 500 status code, indicating an internal server error that is not currently managed by the application.
             - RuntimeError: If an unknown error code is received from the server, providing details about the error code and the corresponding message for debugging purposes.
+            - FreezeSearchException: If a timeout occurs while waiting for the first loading element, indicating that the search process is frozen and cannot proceed further.
         """
 
         cls._clear_ads(page)
@@ -99,7 +101,7 @@ class SearchTitulo:
         success_circle = iframe.locator("circle.success-circle")
         try:
             success_circle.wait_for()
-        except TimeoutError:
+        except PachrightTimeoutError:
             logger.info(f"Captcha not solved.")
             iframe.locator("html").click()
             success_circle.wait_for()
