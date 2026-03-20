@@ -144,7 +144,9 @@ class Siguelo:
         self._go_to_datos_titulo()
         return tuple(detalle_records)
 
-    def __search_titulo(self, current_search: CurrentSearch) -> None:
+    def __search_titulo(
+        self, current_search: CurrentSearch, wait_for_requests: bool
+    ) -> None:
         """
         Raises:
             - AnoyingAdException: If an unexpected advertisement appears during the search process, which may interfere with the normal flow of the application.
@@ -159,9 +161,12 @@ class Siguelo:
             self._go_to_home()
             SearchTitulo.execute(self.page, current_search)
         except TooManyRequestsError:
-            logger.warning("Rate limit reach waiting util tomorrow.")
-            wait_until_request_rate_is_renewed()
-            return self.__search_titulo(current_search)
+            if wait_for_requests:
+                logger.warning("Rate limit reach waiting util tomorrow.")
+                wait_until_request_rate_is_renewed()
+                return self.__search_titulo(current_search, wait_for_requests)
+
+            raise
 
     def find(
         self,
@@ -172,6 +177,7 @@ class Siguelo:
         download_dir: Path,
         screenshot_dir: Path | None = None,
         codigo_tive: str | None = None,
+        wait_for_requests: bool = True,
     ) -> SigueloSearchResult | None:
         result: SigueloSearchResult | None = None
         asientos_tives: tuple[ResourceDownloadResult, ...] = tuple()
@@ -186,7 +192,7 @@ class Siguelo:
             codigo_tive=codigo_tive,
         )
 
-        self.__search_titulo(current_search)
+        self.__search_titulo(current_search, wait_for_requests)
 
         try:
             monto_devolucion: str = GetMontoDevolucion.execute(self.page)
@@ -244,6 +250,7 @@ class Siguelo:
         anio_titulo: str,
         numero_titulo: str,
         screenshot_dir: Path | None = None,
+        wait_for_requests: bool = True,
     ) -> TitleStateResult:
 
         current_search = CurrentSearch(
@@ -253,7 +260,7 @@ class Siguelo:
             numero_titulo=numero_titulo,
             codigo_tive=None,
         )
-        self.__search_titulo(current_search)
+        self.__search_titulo(current_search, wait_for_requests)
 
         try:
             estado_titulo_element = self.page.locator("#estadoActual")
