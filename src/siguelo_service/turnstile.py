@@ -5,7 +5,7 @@ from patchright.sync_api import TimeoutError as PachrightTimeoutError
 from .entities.exceptions import FreezeSearchException, TooManyRequestsError
 
 
-def wait_for_success(page: Page) -> None:
+def wait_for_success(page: Page, timeout: float) -> None:
     """
     Raises:
         - TooManyRequestsError: If the server responds with a 429 status code, indicating that the rate limit has been exceeded and the client should wait before making further requests.
@@ -22,7 +22,7 @@ def wait_for_success(page: Page) -> None:
     first_loading_element_selector = ", ".join(loading_element_selectors)
     first_loading_element = page.locator(first_loading_element_selector)
     try:
-        first_loading_element.wait_for()
+        first_loading_element.wait_for(timeout=timeout)
     except PachrightTimeoutError:
         logger.info("Timeout occurred while waiting for the first loading element.")
         raise FreezeSearchException(

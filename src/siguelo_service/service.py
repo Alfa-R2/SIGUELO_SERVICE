@@ -145,7 +145,7 @@ class Siguelo:
         return tuple(detalle_records)
 
     def __search_titulo(
-        self, current_search: CurrentSearch, wait_for_requests: bool
+        self, current_search: CurrentSearch, wait_for_requests: bool, timeout: float
     ) -> None:
         """
         Raises:
@@ -159,12 +159,12 @@ class Siguelo:
 
         try:
             self._go_to_home()
-            SearchTitulo.execute(self.page, current_search)
+            SearchTitulo.execute(self.page, current_search, timeout)
         except TooManyRequestsError:
             if wait_for_requests:
                 logger.warning("Rate limit reach waiting util tomorrow.")
                 wait_until_request_rate_is_renewed()
-                return self.__search_titulo(current_search, wait_for_requests)
+                return self.__search_titulo(current_search, wait_for_requests, timeout)
 
             raise
 
@@ -178,6 +178,7 @@ class Siguelo:
         screenshot_dir: Path | None = None,
         codigo_tive: str | None = None,
         wait_for_requests: bool = True,
+        timeout: float = 300_000,
     ) -> SigueloSearchResult | None:
         result: SigueloSearchResult | None = None
         asientos_tives: tuple[ResourceDownloadResult, ...] = tuple()
@@ -192,7 +193,7 @@ class Siguelo:
             codigo_tive=codigo_tive,
         )
 
-        self.__search_titulo(current_search, wait_for_requests)
+        self.__search_titulo(current_search, wait_for_requests, timeout)
 
         try:
             monto_devolucion: str = GetMontoDevolucion.execute(self.page)
@@ -251,6 +252,7 @@ class Siguelo:
         numero_titulo: str,
         screenshot_dir: Path | None = None,
         wait_for_requests: bool = True,
+        timeout: float = 300_000,
     ) -> TitleStateResult:
 
         current_search = CurrentSearch(
@@ -260,7 +262,7 @@ class Siguelo:
             numero_titulo=numero_titulo,
             codigo_tive=None,
         )
-        self.__search_titulo(current_search, wait_for_requests)
+        self.__search_titulo(current_search, wait_for_requests, timeout)
 
         try:
             estado_titulo_element = self.page.locator("#estadoActual")

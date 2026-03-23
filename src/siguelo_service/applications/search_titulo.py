@@ -83,7 +83,9 @@ class SearchTitulo:
         return submit_button.click()
 
     @classmethod
-    def execute(cls, page: Page, current_search: CurrentSearch) -> None:
+    def execute(
+        cls, page: Page, current_search: CurrentSearch, timeout: float = 30_000
+    ) -> None:
         """
         Raises:
             - TooManyRequestsError: If the server responds with a 429 status code, indicating that the rate limit has been exceeded and the client should wait before making further requests.
@@ -109,4 +111,4 @@ class SearchTitulo:
 
         cls._send_form(page)
 
-        wait_for_success(page)
+        wait_for_success(page, timeout)
