@@ -1,6 +1,6 @@
 [project]
 name = "siguelo_service"
-version = "0.2.5"
+version = "0.2.6"
 description = "Un proyecto RPA con PDM"
 authors = [{"name"= "Leonardo"}]
 

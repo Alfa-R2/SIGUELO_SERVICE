@@ -1,4 +1,3 @@
-from calendar import c
 from pathlib import Path
 from typing import Generator, Literal
 
@@ -45,7 +44,7 @@ class Siguelo:
         self.page = self.browser_context.new_page()
 
     def __repr__(self):
-        return f"Siguelo(browser_context={self.browser_context}, screenshot_dir={self.screenshot_dir})"
+        return f"Siguelo(browser_context={self.browser_context})"
 
     @property
     def _terminos_condiciones_is_accepted(self) -> bool:
@@ -186,7 +185,7 @@ class Siguelo:
         detalle_seguimiento: tuple[DetalleSeguimientoRecord, ...] = tuple()
 
         current_search = CurrentSearch(
-            tipo=tipo,
+            tipo=tipo.lower(),  # type: ignore
             oficina_registral=oficina_registral,
             anio_titulo=anio_titulo,
             numero_titulo=numero_titulo,
@@ -256,7 +255,7 @@ class Siguelo:
     ) -> TitleStateResult:
 
         current_search = CurrentSearch(
-            tipo=tipo,
+            tipo=tipo.lower(),  # type: ignore
             oficina_registral=oficina_registral,
             anio_titulo=anio_titulo,
             numero_titulo=numero_titulo,
@@ -265,7 +264,13 @@ class Siguelo:
         self.__search_titulo(current_search, wait_for_requests, timeout)
 
         try:
-            estado_titulo_element = self.page.locator("#estadoActual")
+            estado_titulo_element = (
+                self.page.locator("#estadoActual")
+                if tipo == "titulo"
+                else self.page.locator(
+                    "label:has-text('Calificación') + #lugarPresentacion"
+                )
+            )
             estado_titulo_element.wait_for(state="visible", timeout=5000)
             estado_registral = estado_titulo_element.input_value().strip()
             screenshot_path: Path | None = (

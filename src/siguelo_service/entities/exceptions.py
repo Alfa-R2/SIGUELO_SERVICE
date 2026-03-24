@@ -34,3 +34,11 @@ class MainException(Exception): ...
 
 class FreezeSearchException(MainException):
     """Raised when the search process is frozen, which may occur due to various reasons such as server issues, network problems, or unexpected errors during the search operation. This exception indicates that the search process cannot proceed further and may require intervention or troubleshooting to resolve the underlying issue."""
+
+
+class CaptchaOrTitleNumberInvalidException(MainException):
+    """Raised when the captcha or title number provided during the search process is invalid, indicating that the input does not meet the required criteria or format. This exception suggests that the user should verify and correct the captcha or title number before attempting the search again."""
+
+
+class NoResultsFoundException(MainException):
+    """Raised when no results are found for the given search parameters, indicating that the search query did not match any records in the database. This exception suggests that the user should review and adjust the search parameters to increase the chances of finding relevant results."""
