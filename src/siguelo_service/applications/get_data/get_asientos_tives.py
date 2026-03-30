@@ -68,10 +68,6 @@ class GetAsientosTives:
                         _listar_asientos_response_validator
                     ):
                         download_button.click()
-                        not_found_46: str = (
-                            "Visualización restringida, en el marco de lo establecido en el Artículo 46 del Reglamento de Inscripciones de los Registros de Testamentos y de Sucesiones Intestadas"
-                        )
-                        # TODO: wait for "div#swal2-content td" with not_found_46 text or wait for page to exists.
 
             except TimeoutError as e:
                 restricted = command.page.locator(

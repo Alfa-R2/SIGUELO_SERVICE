@@ -53,8 +53,8 @@ class GetAnotacion:
             download_result.path = command.download_path
 
         except TimeoutError as e:
-            logger.exception("Error.")
             download_result.error = True
             download_result.error_message = GetDownloadError.execute(command.page)
 
-        return download_result
+        finally:
+            return download_result

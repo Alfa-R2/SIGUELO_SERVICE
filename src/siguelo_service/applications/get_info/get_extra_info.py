@@ -149,6 +149,7 @@ class GetExtraInfo:
 
         is_popup: bool = "Ver Pago" in cleaned_attachments
         is_new_tab: frozenset[str] = attachments_set & ATTACHABLE_ESQUELAS
+        is_certificado: bool = any("Ver Certificado" in a for a in cleaned_attachments)
 
         if is_popup:
             return cls.__get_pago(command)
@@ -160,7 +161,7 @@ class GetExtraInfo:
                 / f"ESQUELA_{state}_{DOC_TIMESTAMP}_{command.title_number}.pdf",
             )
 
-        if any("Ver Certificado" in a for a in cleaned_attachments):
+        if is_certificado:
             return cls.__get_certificado_resource(
                 command,
                 command.download_dir
