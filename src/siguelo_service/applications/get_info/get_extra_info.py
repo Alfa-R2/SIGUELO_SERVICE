@@ -43,10 +43,9 @@ class GetExtraInfo:
 
     @classmethod
     def __get_esquela_resource(
-        cls, command: GetInfoCommand, state: str, doc_timestamp: str
+        cls, command: GetInfoCommand, file_path: Path
     ) -> ResourceDownloadResult:
 
-        file_path: Path = command.download_dir / f"ESQUELA_{state}_{doc_timestamp}.pdf"
         download_result = ResourceDownloadResult(
             error=False, error_message=None, path=None, resource_type="ESQUELA"
         )
@@ -77,12 +76,9 @@ class GetExtraInfo:
 
     @classmethod
     def __get_certificado_resource(
-        cls, command: GetInfoCommand, state: str, doc_timestamp: str
+        cls, command: GetInfoCommand, file_path: Path
     ) -> ResourceDownloadResult:
 
-        file_path: Path = (
-            command.download_dir / f"CERTIFICADO_{state}_{doc_timestamp}.pdf"
-        )
         download_result: ResourceDownloadResult = ResourceDownloadResult(
             error=False, error_message=None, path=None, resource_type="ANOTACION"
         )
@@ -158,9 +154,17 @@ class GetExtraInfo:
             return cls.__get_pago(command)
 
         if is_new_tab:
-            return cls.__get_esquela_resource(command, state, DOC_TIMESTAMP)
+            return cls.__get_esquela_resource(
+                command,
+                command.download_dir
+                / f"ESQUELA_{state}_{DOC_TIMESTAMP}_{command.title_number}.pdf",
+            )
 
         if any("Ver Certificado" in a for a in cleaned_attachments):
-            return cls.__get_certificado_resource(command, state, DOC_TIMESTAMP)
+            return cls.__get_certificado_resource(
+                command,
+                command.download_dir
+                / f"CERTIFICADO_{state}_{DOC_TIMESTAMP}_{command.title_number}.pdf",
+            )
 
         return None

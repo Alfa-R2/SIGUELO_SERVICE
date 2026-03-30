@@ -15,17 +15,17 @@ from .validators import _anotacion_response_validator
 class GetAnotacionCommand:
     browser_context: BrowserContext
     page: Page
-    download_dir: Path
+    download_path: Path
 
 
 class GetAnotacion:
     @classmethod
     def execute(cls, command: GetAnotacionCommand) -> ResourceDownloadResult | None:
-        download_path: Path = command.download_dir / f"ANOTACION.pdf"
+
         download_result: ResourceDownloadResult = ResourceDownloadResult(
             error=False,
             error_message=None,
-            path=download_path,
+            path=None,
             resource_type="ANOTACION",
         )
 
@@ -46,9 +46,11 @@ class GetAnotacion:
             with new_page.expect_download() as download_info:
                 new_page.evaluate(DOWNLOAD_PDF_SCRIPT)
 
-            download_info.value.save_as(download_path)
+            download_info.value.save_as(command.download_path)
 
             new_page.close()
+
+            download_result.path = command.download_path
 
         except TimeoutError as e:
             logger.exception("Error.")

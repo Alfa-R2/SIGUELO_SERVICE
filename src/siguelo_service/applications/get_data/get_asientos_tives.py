@@ -43,12 +43,12 @@ class GetAsientosTives:
 
         download_path: Path = (
             command.download_dir
-            / f'ASIENTO_{number_text.strip() if number_text else "0"}.pdf'
+            / f'ASIENTO_{number_text.strip() if number_text else "0"}_{command.current_search.numero_titulo}.pdf'
         )
         download_result: ResourceDownloadResult = ResourceDownloadResult(
             error=False,
             error_message=None,
-            path=download_path,
+            path=None,
             resource_type="ASIENTO",
         )
 
@@ -90,6 +90,8 @@ class GetAsientosTives:
 
             new_page.close()
 
+            download_result.path = download_path
+
         except TimeoutError as e:
             download_result.error = True
             download_result.error_message = GetDownloadError.execute(page=command.page)
@@ -117,10 +119,11 @@ class GetAsientosTives:
         assert number_text is not None
 
         download_path = (
-            command.download_dir / f"TIVE_{numero_placa_text}_{number_text}.pdf"
+            command.download_dir
+            / f"TIVE_{numero_placa_text}_{number_text}_{command.current_search.numero_titulo}.pdf"
         )
         download_result = ResourceDownloadResult(
-            error=False, error_message=None, path=download_path, resource_type="TIVE"
+            error=False, error_message=None, path=None, resource_type="TIVE"
         )
 
         if not (download_button := download_button_cell.query_selector("button")):
@@ -172,9 +175,11 @@ class GetAsientosTives:
                     if modal_text.is_visible() and modal_button.is_visible():
                         modal_button.click()
 
+                download_info.value.save_as(download_path)
+                download_result.path = download_path
+
             except TimeoutError as e:
                 raise e
-            download_info.value.save_as(download_path)
 
         except TimeoutError:
             download_result.error = True

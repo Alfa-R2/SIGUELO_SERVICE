@@ -129,6 +129,7 @@ class Siguelo:
                     data=row.locator("td"),
                     page=self.page,
                     download_dir=download_dir,
+                    title_number=current_search.numero_titulo,
                     codigo_tive=codigo_tive,
                 )
 
@@ -215,7 +216,8 @@ class Siguelo:
                     GetAnotacionCommand(
                         browser_context=self.browser_context,
                         page=self.page,
-                        download_dir=download_dir,
+                        download_path=download_dir
+                        / f"ANOTACION_{current_search.numero_titulo}.pdf",
                     )
                 )
 

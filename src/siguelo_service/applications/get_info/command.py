@@ -10,4 +10,5 @@ class GetInfoCommand:
     browser_context: BrowserContext
     data: Locator
     download_dir: Path
+    title_number: str
     codigo_tive: str = ""
