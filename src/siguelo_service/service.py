@@ -214,7 +214,6 @@ class Siguelo:
             if self.page.locator('a:has-text("Ver anotación")').is_visible():
                 anotacion = GetAnotacion.execute(
                     GetAnotacionCommand(
-                        browser_context=self.browser_context,
                         page=self.page,
                         download_path=download_dir
                         / f"ANOTACION_{current_search.numero_titulo}.pdf",

@@ -6,6 +6,7 @@ ERROR_SELECTORS: tuple[str, ...] = (
     'td:has-text("Ha ocurrido un error al intentar obtener")',
     'td:has-text("No sé encontró información solicitada")',
     'p:text(" El registro se encontro en el CM , pero la imagen no existe o esta mal quemada ")',
+    'div#swal2-content td:has-text("Visualización restringida, en el marco de lo establecido en el Artículo 46 del Reglamento de Inscripciones de los Registros de Testamentos y de Sucesiones Intestadas")',
 )
 
 

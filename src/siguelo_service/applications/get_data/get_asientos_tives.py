@@ -11,9 +11,8 @@ from patchright.sync_api import (
 )
 
 from siguelo_service.applications.get_download_error import GetDownloadError
-from siguelo_service.entities.types import RESTRISTED_DOWNLOAD_TD_MSG
+from siguelo_service.applications.helpers import download_from_new_tab
 from siguelo_service.models.dataclasses import CurrentSearch, ResourceDownloadResult
-from siguelo_service.scripts import DOWNLOAD_PDF_SCRIPT
 
 from .validators import (
     _listar_asientos_response_validator,
@@ -45,55 +44,19 @@ class GetAsientosTives:
             command.download_dir
             / f'ASIENTO_{number_text.strip() if number_text else "0"}_{command.current_search.numero_titulo}.pdf'
         )
-        download_result: ResourceDownloadResult = ResourceDownloadResult(
-            error=False,
-            error_message=None,
-            path=None,
-            resource_type="ASIENTO",
-        )
 
         if not (download_button := download_button_cell.query_selector("button")):
             return None
 
-        default_timeout: int = 30_000
-        expect_page_timeout: int = 2 * default_timeout
-        try:
-            try:
-                # NOTE: Here some download may NOT EXISTS
-                with command.browser_context.expect_page(
-                    timeout=expect_page_timeout
-                ) as event_info:
+        with download_from_new_tab(
+            command.page,
+            download_path,
+            "ASIENTO",
+            60_000,
+        ) as download_result:
 
-                    with command.page.expect_response(
-                        _listar_asientos_response_validator
-                    ):
-                        download_button.click()
-
-            except TimeoutError as e:
-                restricted = command.page.locator(
-                    "div#swal2-content td", has_text=RESTRISTED_DOWNLOAD_TD_MSG
-                )
-                if restricted.is_visible():
-                    raise TimeoutError("Restricted download") from e
-                raise e
-
-            new_page = event_info.value
-
-            with new_page.expect_download() as download_info:
-                new_page.evaluate(DOWNLOAD_PDF_SCRIPT)
-
-            download_info.value.save_as(download_path)
-
-            new_page.close()
-
-            download_result.path = download_path
-
-        except TimeoutError as e:
-            download_result.error = True
-            download_result.error_message = GetDownloadError.execute(page=command.page)
-            logger.error(
-                f"Download TIVE From Row Exception: {download_result.error_message}"
-            )
+            with command.page.expect_response(_listar_asientos_response_validator):
+                download_button.click()
 
         return download_result
 

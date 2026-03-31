@@ -4,12 +4,12 @@ from loguru import logger
 from patchright.sync_api import Locator, TimeoutError
 
 from siguelo_service.applications.get_download_error import GetDownloadError
+from siguelo_service.applications.helpers import download_from_new_tab
 from siguelo_service.entities.types import ATTACHABLE_ESQUELAS
 from siguelo_service.models.dataclasses import (
     PagoDetalleSeguimiento,
     ResourceDownloadResult,
 )
-from siguelo_service.scripts import DOWNLOAD_PDF_SCRIPT
 
 from .command import GetInfoCommand
 
@@ -45,34 +45,18 @@ class GetExtraInfo:
     def __get_esquela_resource(
         cls, command: GetInfoCommand, file_path: Path
     ) -> ResourceDownloadResult:
+        download_link = command.data.all()[-1].locator("a")
+        assert download_link != None
 
-        download_result = ResourceDownloadResult(
-            error=False, error_message=None, path=None, resource_type="ESQUELA"
-        )
+        with download_from_new_tab(
+            page=command.page,
+            download_path=file_path,
+            type="ESQUELA",
+        ) as download_result:
 
-        try:
-            if not file_path.exists():
-                download_link = command.data.all()[-1].locator("a")
-                assert download_link != None
+            download_link.click()
 
-                with command.browser_context.expect_page() as new_page_info:
-                    download_link.click()
-
-                new_page = new_page_info.value
-                with new_page.expect_download() as download_info:
-                    new_page.evaluate(DOWNLOAD_PDF_SCRIPT)
-
-                download_info.value.save_as(file_path)
-                new_page.close()
-
-            download_result.path = file_path
-
-        except TimeoutError:
-            download_result.error = True
-            download_result.error_message = GetDownloadError.execute(page=command.page)
-
-        finally:
-            return download_result
+        return download_result
 
     @classmethod
     def __get_certificado_resource(

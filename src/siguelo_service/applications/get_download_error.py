@@ -10,6 +10,11 @@ class GetDownloadError:
 
     @classmethod
     def execute(cls, page: Page) -> str:
+        """
+        raises:
+            - UnknownDownloadException: If no known error message is found in the page.
+        """
+
         elem: Locator = page.locator(", ".join(ERROR_SELECTORS))
         if elem.count():
             msg: str = elem.text_content() or ""

@@ -3,10 +3,6 @@ from enum import Enum
 ESQUELAS = frozenset({"tacha", "liquidación", "observación"})
 ATTACHABLE_ESQUELAS = frozenset(f"Esquela de {e}" for e in ESQUELAS)
 
-RESTRISTED_DOWNLOAD_TD_MSG: str = (
-    "Visualización restringida, en el marco de lo establecido en el Artículo 46 del Reglamento de Inscripciones de los Registros de Testamentos y de Sucesiones Intestadas"
-)
-
 
 class ValidatorURL(Enum):
     API_URL = "https://api-gateway.sunarp.gob.pe:9443/sunarp/siguelo"
