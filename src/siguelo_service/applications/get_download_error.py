@@ -26,4 +26,4 @@ class GetDownloadError:
         if body_content and "No sé encontró el Código ingresado" in body_content:
             return "No sé encontró el Código ingresado"
 
-        raise UnknownDownloadException("No known description.")
+        raise UnknownDownloadException(f"No known description: {body_content}")
