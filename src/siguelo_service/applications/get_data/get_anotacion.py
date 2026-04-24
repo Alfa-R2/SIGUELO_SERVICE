@@ -32,7 +32,8 @@ class GetAnotacion:
             type="ANOTACION",
         ) as download_result:
 
-            with command.page.expect_response(_anotacion_response_validator):
-                download_button.click()
+            if not command.download_path.exists():
+                with command.page.expect_response(_anotacion_response_validator):
+                    download_button.click()
 
         return download_result

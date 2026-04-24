@@ -53,8 +53,8 @@ class GetExtraInfo:
             download_path=file_path,
             type="ESQUELA",
         ) as download_result:
-
-            download_link.click()
+            if not file_path.exists():
+                download_link.click()
 
         return download_result
 

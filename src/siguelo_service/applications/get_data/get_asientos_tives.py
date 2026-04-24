@@ -55,8 +55,9 @@ class GetAsientosTives:
             60_000,
         ) as download_result:
 
-            with command.page.expect_response(_listar_asientos_response_validator):
-                download_button.click()
+            if not download_path.exists():
+                with command.page.expect_response(_listar_asientos_response_validator):
+                    download_button.click()
 
         return download_result
 
